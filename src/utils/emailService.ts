@@ -57,3 +57,42 @@ export const sendFacultyInviteEmail = async ({ toEmail, firstName, schoolName, s
     html: htmlContent,
   });
 };
+
+interface SendResetArgs {
+  toEmail: string;
+  resetUrl: string;
+}
+
+export const sendPasswordResetEmail = async ({ toEmail, resetUrl }: SendResetArgs) => {
+  const htmlContent = `
+    <div style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; max-width: 550px; margin: 0 auto; padding: 30px; border: 1px solid #e2e8f0; borderRadius: 8px; backgroundColor: #ffffff;">
+      <div style="margin-bottom: 24px;">
+        <span style="font-size: 20px; fontWeight: 800; color: #0d7c71;">EduBuddy.</span>
+      </div>
+      <h2 style="color: #1a202c; font-size: 22px; font-weight: 800; margin-top: 0;">Password Reset Request</h2>
+      <p style="color: #4a5568; font-size: 15px; line-height: 24px;">Hello,</p>
+      <p style="color: #4a5568; font-size: 15px; line-height: 24px;">
+        We received a request to reset the password for your EduBuddy account. This link will expire in 30 minutes.
+      </p>
+      
+      <div style="margin: 32px 0; text-align: center;">
+        <a href="${resetUrl}" style="background-color: #0d7c71; color: #ffffff; padding: 14px 24px; font-weight: bold; font-size: 15px; text-decoration: none; border-radius: 6px; display: inline-block; box-shadow: 0 4px 12px rgba(13, 124, 113, 0.15);">
+          Reset Your Password
+        </a>
+      </div>
+
+      <p style="color: #718096; font-size: 13px; line-height: 20px; border-top: 1px solid #edf2f7; padding-top: 20px; margin-bottom: 0;">
+        If you did not request a password reset, please ignore this email or contact your administrator.<br/><br/>
+        If the button above does not work, copy and paste this link into your address bar:<br/>
+        <a href="${resetUrl}" style="color: #0d7c71; word-break: break-all;">${resetUrl}</a>
+      </p>
+    </div>
+  `;
+
+  await transporter.sendMail({
+    from: `"EduBuddy Support" <${process.env.SMTP_USER}>`,
+    to: toEmail,
+    subject: `[EduBuddy] Password Reset Request`,
+    html: htmlContent,
+  });
+};

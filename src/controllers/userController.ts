@@ -3,6 +3,7 @@ import pool from '../config/db.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
 import crypto from 'crypto';
+import { sendPasswordResetEmail } from '../utils/emailService.js';
 
 // Helper function to sign JWT tokens
 const signToken = (id: string, role: string): string => {
@@ -98,6 +99,85 @@ export const loginUser = async (req: Request, res: Response, next: NextFunction)
         role: user.role
       }
     });
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const forgotPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { email, school_id } = req.body;
+
+    if (!email || !school_id) {
+      res.status(400).json({ status: 'fail', message: 'Please provide your email and school ID' });
+      return;
+    }
+
+    // 1. Look up the exact user
+    const userQuery = 'SELECT user_id FROM users WHERE email = $1 AND school_id = $2';
+    const userResult = await pool.query(userQuery, [email, school_id]);
+
+    // Security check: Don't reveal if the account exists to the frontend
+    if (userResult.rows.length === 0) {
+      res.status(200).json({ 
+        status: 'success', 
+        message: 'If an account matches that email and school, a reset link has been sent.' 
+      });
+      return;
+    }
+
+    const userId = userResult.rows[0].user_id;
+
+    // 2. Generate a secure, raw token
+    const resetToken = crypto.randomBytes(32).toString('hex');
+
+    // 3. Hash the token for database storage
+    const tokenHash = crypto
+      .createHash('sha256')
+      .update(resetToken)
+      .digest('hex');
+
+    // 4. Set expiration (30 minutes from now)
+    const expiresAt = new Date(Date.now() + 30 * 60 * 1000);
+
+    // 5. Clean up any existing tokens for this user, then save the new one
+    await pool.query('DELETE FROM password_resets WHERE user_id = $1', [userId]);
+    
+    await pool.query(
+      `INSERT INTO password_resets (user_id, token_hash, expires_at) 
+       VALUES ($1, $2, $3)`,
+      [userId, tokenHash, expiresAt]
+    );
+
+    // 6. Construct the reset URL 
+    // (Make sure FRONTEND_URL is defined in your .env file, e.g., http://localhost:5173)
+    const resetURL = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+    
+    // DEV ONLY: Log this to your terminal so you can test the flow before emails are set up
+    console.log(`[DEV ONLY] Password reset link generated:`, resetURL); 
+
+    try {
+      await sendPasswordResetEmail({
+        toEmail: email,
+        resetUrl: resetURL,
+      });
+    } catch (emailError) {
+      console.error('Email dispatch failed:', emailError);
+      await pool.query('DELETE FROM password_resets WHERE user_id = $1', [userId]);
+      
+      // FIX: Separated the status/json call from the return statement
+      res.status(500).json({ 
+        status: 'error', 
+        message: 'There was an error sending the email. Please try again later.' 
+      });
+      return;
+    }
+
+    res.status(200).json({ 
+      status: 'success', 
+      message: 'If an account matches that email and school, a reset link has been sent.' 
+    });
+
   } catch (error) {
     next(error);
   }

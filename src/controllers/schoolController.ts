@@ -50,3 +50,33 @@ export const createSchool = async (req: Request, res: Response, next: NextFuncti
     next(error);
   }
 };
+
+export const searchSchools = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { q } = req.query;
+
+    if (!q || typeof q !== 'string' || q.length < 2) {
+      res.status(200).json({ status: 'success', data: [] });
+      return;
+    }
+
+    // Using ILIKE for case-insensitive search and % for partial matches
+    const searchQuery = `%${q}%`;
+    const query = `
+      SELECT school_id, school_name 
+      FROM schools 
+      WHERE school_name ILIKE $1 
+      ORDER BY school_name ASC 
+      LIMIT 10;
+    `;
+    
+    const result = await pool.query(query, [searchQuery]);
+
+    res.status(200).json({
+      status: 'success',
+      data: result.rows
+    });
+  } catch (error) {
+    next(error);
+  }
+};
