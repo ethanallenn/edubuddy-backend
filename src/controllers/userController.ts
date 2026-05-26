@@ -2,6 +2,7 @@ import { Request, Response, NextFunction } from 'express';
 import pool from '../config/db.js';
 import bcrypt from 'bcrypt';
 import jwt from 'jsonwebtoken';
+import crypto from 'crypto';
 
 // Helper function to sign JWT tokens
 const signToken = (id: string, role: string): string => {
@@ -61,23 +62,24 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
 
 export const loginUser = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
   try {
-    const { email, password } = req.body;
+    const { email, password, school_id } = req.body;
 
-    if (!email || !password) {
-      res.status(400).json({ status: 'fail', message: 'Please provide both email and password' });
+    // Validate that the school_id is also provided alongside credentials
+    if (!email || !password || !school_id) {
+      res.status(400).json({ status: 'fail', message: 'Please provide email, password, and your school ID' });
       return;
     }
 
-    // Pull user details along with the stored hash
-    const query = 'SELECT * FROM users WHERE email = $1;';
-    const result = await pool.query(query, [email]);
+    // Pull user details using BOTH email and school_id to ensure exact match
+    const query = 'SELECT * FROM users WHERE email = $1 AND school_id = $2;';
+    const result = await pool.query(query, [email, school_id]);
     const user = result.rows[0];
 
     // If no user found or password verification checks fail
     if (!user || !(await bcrypt.compare(password, user.password_hash))) {
       res.status(401).json({
         status: 'fail',
-        message: 'Incorrect email or password combination'
+        message: 'Incorrect email, password, or school combination'
       });
       return;
     }
@@ -98,5 +100,61 @@ export const loginUser = async (req: Request, res: Response, next: NextFunction)
     });
   } catch (error) {
     next(error);
+  }
+};
+
+export const resetPassword = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const { token, newPassword } = req.body;
+
+    if (!token || !newPassword) {
+      res.status(400).json({ status: 'fail', message: 'Token and new password are required' });
+      return;
+    }
+
+    // 1. Hash the incoming raw token to compare with the database
+    const tokenHash = crypto
+      .createHash('sha256')
+      .update(token)
+      .digest('hex');
+
+    // 2. Find the valid, unexpired token in the database
+    const tokenResult = await pool.query(
+      `SELECT user_id FROM password_resets 
+       WHERE token_hash = $1 AND expires_at > NOW()`,
+      [tokenHash]
+    );
+
+    if (tokenResult.rows.length === 0) {
+      res.status(400).json({ status: 'fail', message: 'Token is invalid or has expired.' });
+      return;
+    }
+
+    const userId = tokenResult.rows[0].user_id;
+
+    // 3. Hash the new password
+    const saltRounds = 12; // Matching the cost used in createUser
+    const newPasswordHash = await bcrypt.hash(newPassword, saltRounds);
+
+    // 4. Update the user's password in the users table
+    await pool.query(
+      `UPDATE users SET password_hash = $1 WHERE user_id = $2`,
+      [newPasswordHash, userId]
+    );
+
+    // 5. Delete the used token to prevent reuse
+    await pool.query(
+      `DELETE FROM password_resets WHERE user_id = $1`,
+      [userId]
+    );
+
+    res.status(200).json({ 
+      status: 'success',
+      message: 'Password has been successfully reset.' 
+    });
+
+  } catch (error) {
+    // Passes the error down to Express's global error handler
+    next(error); 
   }
 };
