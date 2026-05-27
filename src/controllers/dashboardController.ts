@@ -1,7 +1,9 @@
 import { Request, Response, NextFunction } from 'express';
 import pool from '../config/db.js';
 
-export const getTeacherDashboardData = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+type AuthRequest = Request & { user?: { school_id?: string } };
+
+export const getTeacherDashboardData = async (req: AuthRequest, res: Response, next: NextFunction): Promise<void> => {
   try {
     // Grab the verified school_id from the 'protect' session middleware payload
     const school_id = req.user?.school_id || '1234567';

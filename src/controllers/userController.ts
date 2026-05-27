@@ -7,9 +7,12 @@ import { sendPasswordResetEmail } from '../utils/emailService.js';
 
 // Helper function to sign JWT tokens
 const signToken = (id: string, role: string): string => {
-  return jwt.sign({ id, role }, process.env.JWT_SECRET!, {
-    expiresIn: process.env.JWT_EXPIRES_IN,
-  });
+  const secret = (process.env.JWT_SECRET as jwt.Secret) || 'dev_secret';
+  const options: jwt.SignOptions = {
+    expiresIn: (process.env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn']) || '1d',
+  };
+
+  return jwt.sign({ id, role } as jwt.JwtPayload, secret, options);
 };
 
 export const getUsersBySchool = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -149,12 +152,13 @@ export const forgotPassword = async (req: Request, res: Response, next: NextFunc
       [userId, tokenHash, expiresAt]
     );
 
-    // 6. Construct the reset URL 
-    // (Make sure FRONTEND_URL is defined in your .env file, e.g., http://localhost:5173)
-    const resetURL = `${process.env.FRONTEND_URL}/reset-password?token=${resetToken}`;
+    // 6. Construct the reset URL.
+    // Prefer the configured frontend origin, but fall back to local dev so the link never becomes undefined.
+    const frontendUrl = process.env.FRONTEND_URL || 'http://localhost:5173';
+    const resetURL = `${frontendUrl}/${school_id}/reset-password?token=${resetToken}`;
     
     // DEV ONLY: Log this to your terminal so you can test the flow before emails are set up
-    console.log(`[DEV ONLY] Password reset link generated:`, resetURL); 
+    console.log(`[DEV ONLY] Password reset link generated:`, resetURL);
 
     try {
       await sendPasswordResetEmail({
