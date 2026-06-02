@@ -1,9 +1,15 @@
 import { Request, Response, NextFunction } from 'express';
 import pool from '../config/db.js';
+import { appendAdminActivity, listAdminActivities } from '../utils/adminActivityStore.js';
 
 export const batchIngestStudents = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  let school_id = '';
+  let class_name = '';
+  let academic_year = '';
+  let students: Array<{ first_name: string; last_name: string; email?: string; candidate_number?: string }> = [];
+
   try {
-    const { school_id, class_name, academic_year, students } = req.body;
+    ({ school_id, class_name, academic_year, students } = req.body);
 
     console.log('📥 [API Batch-Ingest] Incoming Payload Request:');
     console.log(` -> School ID (DENI): "${school_id}"`);
@@ -81,6 +87,27 @@ export const batchIngestStudents = async (req: Request, res: Response, next: Nex
 
       await client.query('COMMIT');
       console.log(`🎉 [DB Transaction] Successfully committed ${insertedStudents.length} rows to Postgres.`);
+
+      const activity = await appendAdminActivity({
+        school_id,
+        type: 'student_import',
+        class_name,
+        academic_year,
+        status: 'success',
+        title: 'Student import completed',
+        message: `Successfully structured class "${class_name}" with ${insertedStudents.length} pupils mapped.`,
+        meta: {
+          total_requested: students.length,
+          total_processed: insertedStudents.length,
+          class_id: classId,
+          students: insertedStudents.map((student) => ({
+            first_name: student.first_name,
+            last_name: student.last_name,
+            email: student.email ?? undefined,
+            candidate_number: student.candidate_number ?? undefined,
+          })),
+        },
+      });
       
       res.status(201).json({
         status: 'success',
@@ -88,16 +115,60 @@ export const batchIngestStudents = async (req: Request, res: Response, next: Nex
         data: {
           class_id: classId,
           students: insertedStudents
-        }
+        },
+        activity
       });
 
     } catch (txError) {
       await client.query('ROLLBACK');
       console.error('❌ [DB Transaction Fatal Error] Rolling back active operation sequence:', txError);
+      await appendAdminActivity({
+        school_id,
+        type: 'student_import',
+        status: 'failed',
+        title: 'Student import failed',
+        message: txError instanceof Error ? txError.message : 'Unknown import error.',
+        meta: {
+          class_name,
+          academic_year,
+          total_requested: Array.isArray(students) ? students.length : 0,
+          total_processed: 0,
+          students: Array.isArray(students)
+            ? students.map((student) => ({
+                first_name: student.first_name,
+                last_name: student.last_name,
+                email: student.email,
+                candidate_number: student.candidate_number,
+              }))
+            : [],
+        },
+      }).catch(() => undefined);
       throw txError;
     } finally {
       client.release();
     }
+  } catch (error) {
+    next(error);
+  }
+};
+
+export const getImportHistory = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
+  try {
+    const schoolId = (req as Request & { user?: { school_id?: string } }).user?.school_id;
+
+    if (!schoolId) {
+      res.status(401).json({ status: 'fail', message: 'Missing authenticated school context.' });
+      return;
+    }
+
+    const activities = await listAdminActivities(schoolId, 50);
+    const history = activities.filter((activity) => activity.type === 'student_import').slice(0, 12);
+
+    res.status(200).json({
+      status: 'success',
+      results: history.length,
+      data: history,
+    });
   } catch (error) {
     next(error);
   }

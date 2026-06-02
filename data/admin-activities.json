@@ -1,0 +1,58 @@
+[
+  {
+    "id": "1780430570165-9edca044afbc58",
+    "created_at": "2026-06-02T20:02:50.165Z",
+    "school_id": "6574834",
+    "type": "student_import",
+    "class_name": "Test One",
+    "academic_year": "2025/2026",
+    "status": "success",
+    "title": "Student import completed",
+    "message": "Successfully structured class \"Test One\" with 2 pupils mapped.",
+    "meta": {
+      "total_requested": 2,
+      "total_processed": 2,
+      "class_id": "61ce0001-323a-4a42-8016-5cef21029b9e",
+      "students": [
+        {
+          "first_name": "EA",
+          "last_name": "ONE",
+          "candidate_number": "7483"
+        },
+        {
+          "first_name": "EA",
+          "last_name": "TWO",
+          "candidate_number": "3672"
+        }
+      ]
+    }
+  },
+  {
+    "id": "1780429716053-3534fe2f497da",
+    "created_at": "2026-06-02T19:48:36.053Z",
+    "school_id": "6574834",
+    "type": "student_import",
+    "class_name": "Ethan Test One",
+    "academic_year": "2026/2027",
+    "status": "success",
+    "title": "Student import completed",
+    "message": "Successfully structured class \"Ethan Test One\" with 2 pupils mapped.",
+    "meta": {
+      "total_requested": 2,
+      "total_processed": 2,
+      "class_id": "6275bdf1-3eff-414c-b1cf-d3c962401f3c",
+      "students": [
+        {
+          "first_name": "Test",
+          "last_name": "A",
+          "candidate_number": "0129"
+        },
+        {
+          "first_name": "Test",
+          "last_name": "B",
+          "candidate_number": "0321"
+        }
+      ]
+    }
+  }
+]

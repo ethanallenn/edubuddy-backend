@@ -6,13 +6,13 @@ import crypto from 'crypto';
 import { sendPasswordResetEmail } from '../utils/emailService.js';
 
 // Helper function to sign JWT tokens
-const signToken = (id: string, role: string): string => {
+const signToken = (id: string, role: string, school_id: string): string => {
   const secret = (process.env.JWT_SECRET as jwt.Secret) || 'dev_secret';
   const options: jwt.SignOptions = {
     expiresIn: (process.env.JWT_EXPIRES_IN as jwt.SignOptions['expiresIn']) || '1d',
   };
 
-  return jwt.sign({ id, role } as jwt.JwtPayload, secret, options);
+  return jwt.sign({ id, role, school_id } as jwt.JwtPayload, secret, options);
 };
 
 export const getUsersBySchool = async (req: Request, res: Response, next: NextFunction): Promise<void> => {
@@ -47,12 +47,12 @@ export const createUser = async (req: Request, res: Response, next: NextFunction
     const query = `
       INSERT INTO users (school_id, first_name, last_name, email, password_hash, role) 
       VALUES ($1, $2, $3, $4, $5, $6) 
-      RETURNING user_id, first_name, last_name, email, role;
+      RETURNING user_id, school_id, first_name, last_name, email, role;
     `;
     const result = await pool.query(query, [school_id, first_name, last_name, email, passwordHash, role]);
 
     // Automatically log them in by generating an active token
-    const token = signToken(result.rows[0].user_id, result.rows[0].role);
+    const token = signToken(result.rows[0].user_id, result.rows[0].role, result.rows[0].school_id);
 
     res.status(201).json({
       status: 'success',
@@ -89,13 +89,14 @@ export const loginUser = async (req: Request, res: Response, next: NextFunction)
     }
 
     // Credentials verified! Issue token
-    const token = signToken(user.user_id, user.role);
+    const token = signToken(user.user_id, user.role, user.school_id);
 
     res.status(200).json({
       status: 'success',
       token,
       data: {
         user_id: user.user_id,
+        school_id: user.school_id,
         first_name: user.first_name,
         last_name: user.last_name,
         email: user.email,

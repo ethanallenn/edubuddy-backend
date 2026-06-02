@@ -6,6 +6,7 @@ export interface AuthenticatedRequest extends Request {
   user?: {
     id: string;
     role: string;
+    school_id: string;
   };
 }
 
@@ -32,12 +33,13 @@ export const protectRoute = async (
     }
 
     // 3. Cryptographically verify the token using your server's secret key
-    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: string; role: string };
+    const decoded = jwt.verify(token, process.env.JWT_SECRET!) as { id: string; role: string; school_id: string };
 
     // 4. Attach the verified user details to the request object for use down the line
     req.user = {
       id: decoded.id,
-      role: decoded.role
+      role: decoded.role,
+      school_id: decoded.school_id
     };
 
     next(); // Pass the request along cleanly to the intended controller!

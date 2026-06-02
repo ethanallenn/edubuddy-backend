@@ -8,6 +8,7 @@ import studentRoutes from './routes/studentRoutes.js';
 import subjectRoutes from './routes/subjectRoutes.js';
 import gradeRoutes from './routes/gradeRoutes.js';
 import inviteRoutes from './routes/inviteRoutes.js';
+import adminRoutes from './routes/adminRoutes.js';
 import dashboardRoutes from './routes/dashboardRoutes.js';
 import { globalErrorHandler } from './middleware/errorHandler.js'; // 1. Import handler
 
@@ -26,6 +27,7 @@ app.use('/api/v1/students', studentRoutes);
 app.use('/api/v1/subjects', subjectRoutes);
 app.use('/api/v1/grades', gradeRoutes);
 app.use('/api/v1/invites', inviteRoutes);
+app.use('/api/v1/admin', adminRoutes);
 app.use('/api/v1/dashboard', dashboardRoutes);
 
 // Catch-all for missing endpoints
