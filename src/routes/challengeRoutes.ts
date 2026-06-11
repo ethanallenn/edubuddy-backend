@@ -3,12 +3,9 @@ import { getChallengesByNode, createChallenge, startForgeSession, submitForgeSes
 
 const router = Router();
 
-// Challenge management
 router.get('/node/:nodeId', getChallengesByNode);
 router.post('/', createChallenge);
-
-// Interactive Forge Sessions
-router.post('/session/start', startForgeSession);
-router.put('/session/:sessionId/submit', submitForgeSession);
+router.post('/forge/start', startForgeSession);
+router.post('/forge/submit/:sessionId', submitForgeSession);
 
 export default router;

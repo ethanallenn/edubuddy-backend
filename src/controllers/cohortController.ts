@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { pool } from '../app';
+import { pool } from '../db';
 
 export const getCohorts = async (req: Request, res: Response) => {
   try {

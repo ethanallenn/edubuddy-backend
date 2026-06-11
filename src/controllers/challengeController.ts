@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { pool } from '../app';
+import { pool } from '../db';
 
 export const getChallengesByNode = async (req: Request, res: Response): Promise<void> => {
   const { nodeId } = req.params;

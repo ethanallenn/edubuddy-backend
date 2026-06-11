@@ -3,10 +3,8 @@ import { getStudentMastery, getCohortMastery, updateMasteryStatus } from '../con
 
 const router = Router();
 
-// Fetch mastery for an individual student across the graph
 router.get('/student/:studentId', getStudentMastery);
-// Fetch mastery for an entire cohort (Powers the Teacher Heat Map)
 router.get('/cohort/:cohortId', getCohortMastery);
-router.put('/update', updateMasteryStatus);
+router.post('/update', updateMasteryStatus);
 
 export default router;

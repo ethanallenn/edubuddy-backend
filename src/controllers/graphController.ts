@@ -1,5 +1,5 @@
 import { Request, Response } from 'express';
-import { pool } from '../app';
+import { pool } from '../db';
 
 // Get the full skill graph (nodes and edges)
 export const getSkillGraph = async (req: Request, res: Response) => {
